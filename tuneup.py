@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """Tuneup assignment"""
 
-__author__ = "???"
+__author__ = "Jacob Walker"
 
 import cProfile
 import pstats
-import functools
+import timeit
 
 
 def profile(func):
@@ -14,7 +14,17 @@ def profile(func):
     # You need to understand how decorators are constructed and used.
     # Be sure to review the lesson material on decorators, they are used
     # extensively in Django and Flask.
-    raise NotImplementedError("Complete this decorator function")
+    # https://docs.python.org/2/library/profile.html
+    def deco(*args, **kwargs):
+        pr = cProfile.Profile()
+        pr.enable()
+        result = func(*args, **kwargs)
+        pr.disable()
+        sort_by = 'cumulative'
+        ps = pstats.Stats(pr).sort_stats(sort_by)
+        ps.print_stats(10)
+        return result
+    return deco
 
 
 def read_movies(src):
@@ -35,24 +45,39 @@ def is_duplicate(title, movies):
 def find_duplicate_movies(src):
     """Returns a list of duplicate movies from a src list"""
     movies = read_movies(src)
-    duplicates = []
-    while movies:
-        movie = movies.pop()
-        if is_duplicate(movie, movies):
-            duplicates.append(movie)
-    return duplicates
+    formatted_movies = []
+    seen = {}
+    results = []
+
+    for movie in movies:
+        formatted_movies.append(movie.split('\t')[1])
+
+    for movie in formatted_movies:
+        if movie in seen:
+            seen[movie] += 1
+            results.append(movie)
+        else:
+            seen[movie] = 1
+    print('Found {} duplicate movies:{}'.format(len(results), results))
 
 
+@profile
 def timeit_helper():
     """Part A:  Obtain some profiling measurements using timeit"""
     # YOUR CODE GOES HERE
+    setup = 'from __main__ import find_duplicate_movies'
+    """Computes a list of duplicate movie entries"""
+    t = timeit.Timer("find_duplicate_movies('movies.txt')", setup)
+    repeat_num = 3
+    run_num = 3
+    result = t.repeat(repeat=repeat_num, number=run_num)
+    result = [number / float(run_num) for number in result]
+    print('Best time of {} runs:'.format(repeat_num * run_num))
+    return min(result)
 
 
 def main():
-    """Computes a list of duplicate movie entries"""
-    result = find_duplicate_movies('movies.txt')
-    print('Found {} duplicate movies:'.format(len(result)))
-    print('\n'.join(result))
+    timeit_helper()
 
 
 if __name__ == '__main__':
